@@ -94,9 +94,14 @@ COPY docker-php-source /usr/local/bin/
 RUN set -eux; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
+        curl -o /tmp/libargon2.deb http://http.us.debian.org/debian/pool/main/a/argon2/libargon2-1_0~20171227-0.1_amd64.deb; \
+        curl -o /tmp/libargon2-dev.deb http://http.us.debian.org/debian/pool/main/a/argon2/libargon2-dev_0~20171227-0.1_amd64.deb; \
+        dpkg -i /tmp/libargon2.deb; \
+        dpkg -i /tmp/libargon2-dev.deb; \
+        rm /tmp/libargon2.deb; \
+        rm /tmp/libargon2-dev.deb; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
-		libargon2-0-dev \
 		libcurl4-openssl-dev \
 		libedit-dev \
 		libsodium-dev \
