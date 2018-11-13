@@ -43,11 +43,11 @@ ENV PHP_CFLAGS="-fstack-protector-strong -fpic -fpie -O2"
 ENV PHP_CPPFLAGS="$PHP_CFLAGS"
 ENV PHP_LDFLAGS="-Wl,-O1 -Wl,--hash-style=both -pie"
 
-ENV GPG_KEYS D66C9593118BCCB6
+ENV GPG_KEYS CBAF69F173A0FEA4B537F470D66C9593118BCCB6 F38252826ACD957EF380D39F2F7956BC5DA04B5D
 
-ENV PHP_VERSION 7.3.0RC4
-ENV PHP_URL="https://downloads.php.net/~cmb/php-7.3.0RC4.tar.xz" PHP_ASC_URL="https://downloads.php.net/~cmb/php-7.3.0RC4.tar.xz.asc"
-ENV PHP_SHA256="11582176003e0e8ca06dbdebab0921d539cab2ad795c0d90f146977859e21c26" PHP_MD5=""
+ENV PHP_VERSION 7.3.0RC5
+ENV PHP_URL="https://downloads.php.net/~cmb/php-7.3.0RC5.tar.xz" PHP_ASC_URL="https://downloads.php.net/~cmb/php-7.3.0RC5.tar.xz.asc"
+ENV PHP_SHA256="0bf6a6bdfd37576b9a341559023b0adf90063b8970ab08ea7a4d8e83b82136cd" PHP_MD5=""
 
 RUN set -xe; \
 	\
@@ -80,7 +80,7 @@ RUN set -xe; \
 		wget -O php.tar.xz.asc "$PHP_ASC_URL"; \
 		export GNUPGHOME="$(mktemp -d)"; \
 		for key in $GPG_KEYS; do \
-			gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+			gpg --no-tty --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
 		done; \
 		gpg --batch --verify php.tar.xz.asc php.tar.xz; \
 		command -v gpgconf > /dev/null && gpgconf --kill all; \
@@ -94,12 +94,6 @@ COPY docker-php-source /usr/local/bin/
 RUN set -eux; \
 	\
 	savedAptMark="$(apt-mark showmanual)"; \
-        curl -o /tmp/libargon2.deb http://http.us.debian.org/debian/pool/main/a/argon2/libargon2-1_0~20171227-0.1_amd64.deb; \
-        curl -o /tmp/libargon2-dev.deb http://http.us.debian.org/debian/pool/main/a/argon2/libargon2-dev_0~20171227-0.1_amd64.deb; \
-        dpkg -i /tmp/libargon2.deb; \
-        dpkg -i /tmp/libargon2-dev.deb; \
-        rm /tmp/libargon2.deb; \
-        rm /tmp/libargon2-dev.deb; \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 		libcurl4-openssl-dev \
@@ -111,6 +105,18 @@ RUN set -eux; \
 		zlib1g-dev \
 		${PHP_EXTRA_BUILD_DEPS:-} \
 	; \
+	sed -e 's/stretch/buster/g' /etc/apt/sources.list > /etc/apt/sources.list.d/buster.list; \
+	{ \
+		echo 'Package: *'; \
+		echo 'Pin: release n=buster'; \
+		echo 'Pin-Priority: -10'; \
+		echo; \
+		echo 'Package: libargon2*'; \
+		echo 'Pin: release n=buster'; \
+		echo 'Pin-Priority: 990'; \
+	} > /etc/apt/preferences.d/argon2-buster; \
+	apt-get update; \
+	apt-get install -y --no-install-recommends libargon2-dev; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
 	export \
@@ -164,6 +170,10 @@ RUN set -eux; \
 	make install; \
 	find /usr/local/bin /usr/local/sbin -type f -executable -exec strip --strip-all '{}' + || true; \
 	make clean; \
+	\
+# https://github.com/docker-library/php/issues/692 (copy default example "php.ini" files somewhere easily discoverable)
+	cp -v php.ini-* "$PHP_INI_DIR/"; \
+	\
 	cd /; \
 	docker-php-source delete; \
 	\
